@@ -1,6 +1,6 @@
 Name:           util-linux
 Version:        2.20.2
-Release:        1
+Release:        4
 License:        GPLv2 and GPLv2+ and BSD with advertising and Public Domain
 Summary:        A collection of basic system utilities
 Url:            http://www.kernel.org/pub/linux/utils/util-linux/
@@ -181,6 +181,15 @@ find  %{buildroot}%{_mandir}/man8 -regextype posix-egrep  \
 
 rm -f %{buildroot}%{_infodir}/dir
 
+mkdir -p $RPM_BUILD_ROOT%{_datadir}/license
+for keyword in LICENSE COPYING COPYRIGHT;
+do
+	for file in `find %{_builddir} -name $keyword`;
+	do
+		cat $file >> $RPM_BUILD_ROOT%{_datadir}/license/%{name};
+		echo "";
+	done;
+done
 
 %post
 # only for minimal buildroots without /var/log
@@ -207,6 +216,7 @@ rm -f %{buildroot}%{_infodir}/dir
 %files  -f util-linux.files
 %manifest util-linux.manifest
 %defattr(-,root,root)
+%{_datadir}/license/%{name}
 %ghost %attr(0644,root,root)    %verify(not md5 size mtime)     %{_localstatedir}/log/lastlog
 /etc/pam.d/remote
 #/etc/pam.d/login
@@ -323,4 +333,3 @@ rm -f %{buildroot}%{_infodir}/dir
 %{_includedir}/libmount/libmount.h
 %{_prefix}/lib/libmount.so
 %{_prefix}/lib/pkgconfig/mount.pc
-

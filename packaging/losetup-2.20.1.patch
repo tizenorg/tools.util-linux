@@ -156,7 +156,7 @@ diff -Naur util-linux/mount/lomount.c util-linux-new/mount/lomount.c
 +
 +
  /*
-  * return codes:
+  *  return codes:
   *	0	- success
 @@ -1029,6 +1179,7 @@
 	  " -o, --offset <num>      start at offset <num> into file\n"
