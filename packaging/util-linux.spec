@@ -223,7 +223,7 @@ done
 /bin/dmesg
 /bin/findmnt
 /bin/lsblk
-%exclude %attr(4755,root,root)   /bin/mount
+%attr(4755,root,root)   /bin/mount
 %attr(4755,root,root)   /bin/umount
 /sbin/agetty
 /sbin/blkid
