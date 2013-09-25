@@ -191,6 +191,10 @@ do
 	done;
 done
 
+# license
+mkdir -p %{buildroot}/usr/share/license
+cp COPYING %{buildroot}/usr/share/license/%{name}
+
 %post
 # only for minimal buildroots without /var/log
 [ -d /var/log ] || /bin/mkdir -p /var/log
@@ -212,6 +216,9 @@ done
 %postun -n libuuid -p /sbin/ldconfig
 
 %docs_package
+
+%files
+/usr/share/license/%{name}
 
 %files  -f util-linux.files
 %manifest util-linux.manifest
