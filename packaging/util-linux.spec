@@ -1,7 +1,7 @@
 Name:           util-linux
 Version:        2.20.2
 Release:        4
-License:        GPL-2.0 and LGPL-2.0+ and BSD with advertising and Public Domain
+License:        GPLv2 and GPLv2+ and BSD with advertising and Public Domain
 Summary:        A collection of basic system utilities
 Url:            http://www.kernel.org/pub/linux/utils/util-linux/
 Group:          System/Base
@@ -138,6 +138,7 @@ make %{?_smp_mflags}
 %install
 %make_install
 
+
 # And a dirs uuidd needs that the makefiles don't create
 install -d %{buildroot}%{_localstatedir}/run/uuidd
 install -d %{buildroot}%{_localstatedir}/lib/libuuid
@@ -181,25 +182,11 @@ find  %{buildroot}%{_mandir}/man8 -regextype posix-egrep  \
 rm -f %{buildroot}%{_infodir}/dir
 
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/license
-for keyword in LICENSE COPYING COPYRIGHT;
-do
-	for file in `find %{_builddir} -name $keyword`;
-	do
-		cat $file >> $RPM_BUILD_ROOT%{_datadir}/license/%{name};
-		echo "";
-	done;
-done
-
-# license
-mkdir -p %{buildroot}/usr/share/license
-cp COPYING %{buildroot}/usr/share/license/%{name}
-cp COPYING %{buildroot}/usr/share/license/uuidd
-cp COPYING %{buildroot}/usr/share/license/libblkid
-cp COPYING %{buildroot}/usr/share/license/libblkid-devel
-cp COPYING %{buildroot}/usr/share/license/libuuid
-cp COPYING %{buildroot}/usr/share/license/libuuid-devel
-cp COPYING %{buildroot}/usr/share/license/libmount
-cp COPYING %{buildroot}/usr/share/license/libmount-devel
+cat COPYING > $RPM_BUILD_ROOT%{_datadir}/license/util-linux
+cat COPYING > $RPM_BUILD_ROOT%{_datadir}/license/uuidd
+cat COPYING > $RPM_BUILD_ROOT%{_datadir}/license/libblkid
+cat COPYING > $RPM_BUILD_ROOT%{_datadir}/license/libuuid
+cat COPYING > $RPM_BUILD_ROOT%{_datadir}/license/libmount
 
 %post
 # only for minimal buildroots without /var/log
@@ -223,21 +210,17 @@ cp COPYING %{buildroot}/usr/share/license/libmount-devel
 
 %docs_package
 
-%files
-/usr/share/license/%{name}
-
 %files  -f util-linux.files
-%manifest util-linux.manifest
 %defattr(-,root,root)
-/usr/share/license/%{name}
+%{_datadir}/license/util-linux
 %ghost %attr(0644,root,root)    %verify(not md5 size mtime)     %{_localstatedir}/log/lastlog
 /etc/pam.d/remote
 #/etc/pam.d/login
 /bin/dmesg
 /bin/findmnt
 /bin/lsblk
-%attr(4755,root,root)   /bin/mount
-%attr(4755,root,root)   /bin/umount
+%exclude %attr(4755,root,root)   /bin/mount
+%exclude %attr(4755,root,root)   /bin/umount
 /sbin/agetty
 /sbin/blkid
 /sbin/blockdev
@@ -304,52 +287,50 @@ cp COPYING %{buildroot}/usr/share/license/libmount-devel
 %{_sbindir}/partx
 %{_datadir}/getopt/getopt-parse.bash
 %exclude %{_datadir}/getopt/getopt-parse.tcsh
+%manifest util-linux.manifest
 
 %files -n uuidd
-%manifest util-linux.manifest
 %defattr(-,root,root)
+%{_datadir}/license/uuidd
 #/etc/rc.d/init.d/uuidd
 %attr(-, uuidd, uuidd) %{_sbindir}/uuidd
-/usr/share/license/uuidd
+%manifest util-linux.manifest
 
 %files -n libblkid
-%manifest util-linux.manifest
 %defattr(-,root,root)
+%{_datadir}/license/libblkid
 /%{_libdir}/libblkid.so.*
-/usr/share/license/libblkid
+%manifest util-linux.manifest
 
 %files -n libblkid-devel
-%manifest util-linux.manifest
 %defattr(-,root,root)
 %{_libdir}/libblkid.so
 %{_includedir}/blkid
 %{_libdir}/pkgconfig/blkid.pc
-/usr/share/license/libblkid-devel
+%manifest util-linux.manifest
 
 %files -n libuuid
-%manifest util-linux.manifest
 %defattr(-,root,root)
-%{_prefix}/lib/libuuid.so.*
-/usr/share/license/libuuid
+%{_datadir}/license/libuuid
+%{_libdir}/libuuid.so.*
+%manifest util-linux.manifest
 
 %files -n libuuid-devel
-%manifest util-linux.manifest
 %defattr(-,root,root)
 %{_libdir}/libuuid.so
 %{_includedir}/uuid
 %{_libdir}/pkgconfig/uuid.pc
-/usr/share/license/libuuid-devel
+%manifest util-linux.manifest
 
 %files -n libmount
-%manifest util-linux.manifest
 %defattr(-,root,root)
-%{_prefix}/lib/libmount.so.*
-/usr/share/license/libmount
+%{_datadir}/license/libmount
+%{_libdir}/libmount.so.*
+%manifest util-linux.manifest
 
 %files -n libmount-devel
-%manifest util-linux.manifest
 %defattr(-,root,root)
 %{_includedir}/libmount/libmount.h
-%{_prefix}/lib/libmount.so
-%{_prefix}/lib/pkgconfig/mount.pc
-/usr/share/license/libmount-devel
+%{_libdir}/libmount.so
+%{_libdir}/pkgconfig/mount.pc
+%manifest util-linux.manifest
