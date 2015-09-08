@@ -1,10 +1,62 @@
-util-linux-ng 2.16.2: Nov 30 2009
-* see docs/v2.16.2-ReleaseNotes or complete changelog at
-  ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.16/v2.16.2-ChangeLog
+util-linux 2.20.1: Oct 19 2011
+* see docs/v2.20.1-ReleaseNotes or complete changelog at
+  ftp://ftp.infradead.org/pub/util-linux/v2.20/v2.20.1-ChangeLog
 
-util-linux-ng 2.16.1: Sep 7 2009
-* see docs/v2.16.1-ReleaseNotes or complete changelog at
-  ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.16/v2.16.1-ChangeLog
+util-linux 2.20: Aug 29 2011
+* see docs/v2.20-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux/v2.20/v2.20-ChangeLog
+
+util-linux 2.20-rc2: Aug 17 2011
+* see docs/v2.20-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux/v2.20/v2.20-rc2-ChangeLog
+
+util-linux 2.20-rc1: Jul 29 2011
+* see docs/v2.20-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux/v2.20/v2.20-rc1-ChangeLog
+
+util-linux 2.19: Feb 10 2011
+* see docs/v2.19-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux/v2.19/v2.19-ChangeLog
+
+util-linux 2.19-rc3: Jan 25 2011
+* see docs/v2.19-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux/v2.19/v2.19-rc3-ChangeLog
+
+util-linux 2.19-rc2: Jan 25 2011
+* see docs/v2.19-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux/v2.19/v2.19-rc2-ChangeLog
+
+util-linux 2.19-rc1: Jan 05 2011
+* see docs/v2.19-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux/v2.19/v2.19-rc1-ChangeLog
+
+util-linux-ng 2.18: Jun 30 2010
+* see docs/v2.18-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.18/v2.18-ChangeLog
+
+util-linux-ng 2.18-rc2: Jun 18 2010
+* see docs/v2.18-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.18/v2.18-rc2-ChangeLog
+
+util-linux-ng 2.18-rc1: Jun 7 2010
+* see docs/v2.18-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.18/v2.18-rc1-ChangeLog
+
+util-linux-ng 2.17: Jan 8 2010
+* see docs/v2.17-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.17/v2.17-ChangeLog
+
+util-linux-ng 2.17-rc3: Dec 10 2009
+* see docs/v2.17-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.17/v2.17-rc3-ChangeLog
+
+util-linux-ng 2.17-rc2: Dec 9 2009
+* see docs/v2.17-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.17/v2.17-rc2-ChangeLog
+
+util-linux-ng 2.17-rc1: Nov 20 2009
+* see docs/v2.17-ReleaseNotes or complete changelog at
+  ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.17/v2.17-rc1-ChangeLog
 
 util-linux-ng 2.16: Jul  2009
 * see docs/v2.16-ReleaseNotes or complete changelog at

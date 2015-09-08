@@ -49,6 +49,8 @@
 
 #include "pathnames.h"
 #include "nls.h"
+#include "xalloc.h"
+#include "c.h"
 
 #define	SECDAY	(24*60*60)			/* seconds in a day */
 #define	NO	0				/* false/no */
@@ -146,7 +148,7 @@ main(int argc, char **argv) {
 		case '?':
 		default:
 			fputs(_("usage: last [-#] [-f file] [-t tty] [-h hostname] [user ...]\n"), stderr);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	for (argv += optind; *argv; ++argv) {
 #define	COMPATIBILITY
@@ -157,7 +159,14 @@ main(int argc, char **argv) {
 		addarg(USER_TYPE, *argv);
 	}
 	wtmp();
-	exit(0);
+
+	return EXIT_SUCCESS;
+}
+
+static char *utmp_ctime(struct utmp *u)
+{
+	time_t t = (time_t) u->ut_time;
+	return ctime(&t);
 }
 
 /*
@@ -168,7 +177,7 @@ static void
 print_partial_line(struct utmp *bp) {
     char *ct;
 
-    ct = ctime(&bp->ut_time);
+    ct = utmp_ctime(bp);
     printf("%-*.*s  %-*.*s ", nmax, nmax, bp->ut_name, 
 	   lmax, lmax, bp->ut_line);
 
@@ -208,25 +217,39 @@ wtmp(void) {
 	int utl_len;
 	int listnr = 0;
 	int i;
-	
+
 	utmpname(file);
 
-	(void)time(&utmpbuf.ut_time);
+	{
+#if defined(_HAVE_UT_TV)
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		utmpbuf.ut_tv.tv_sec = tv.tv_sec;
+		utmpbuf.ut_tv.tv_usec = tv.tv_usec;
+#else
+		time_t t;
+		time(&t);
+		utmpbuf.ut_time = t;
+#endif
+	}
+
 	(void)signal(SIGINT, onintr);
 	(void)signal(SIGQUIT, onintr);
 
 	if ((fd = open(file,O_RDONLY)) < 0)
-		exit(1);
+		err(EXIT_FAILURE, _("%s: open failed"), file);
+
 	fstat(fd, &st);
 	utl_len = st.st_size;
 	utl = mmap(NULL, utl_len, PROT_READ|PROT_WRITE,
 		   MAP_PRIVATE|MAP_FILE, fd, 0);
 	if (utl == NULL)
-		exit(1);
+		err(EXIT_FAILURE, _("%s: mmap failed"), file);
+
 	listnr = utl_len/sizeof(struct utmp);
 
 	if(listnr) 
-		ct = ctime(&utl[0].ut_time);
+		ct = utmp_ctime(&utl[0]);
 
 	for(i = listnr - 1; i >= 0; i--) {
 		bp = utl+i;
@@ -254,7 +277,7 @@ wtmp(void) {
 		    if (!bp->ut_name[0])
 			(void)strcpy(bp->ut_name, "reboot");
 		    if (want(bp, NO)) {
-			ct = ctime(&bp->ut_time);
+			ct = utmp_ctime(bp);
 			if(bp->ut_type != LOGIN_PROCESS) {
 			    print_partial_line(bp);
 			    putchar('\n');
@@ -326,28 +349,28 @@ want(struct utmp *bp, int check) {
 			bp->ut_line[4] = '\0';
 	}
 	if (!arglist)
-		return(YES);
+		return YES;
 
 	for (step = arglist; step; step = step->next)
 		switch(step->type) {
 		case HOST_TYPE:
 			if (!strncmp(step->name, bp->ut_host, HMAX))
-				return(YES);
+				return YES;
 			break;
 		case TTY_TYPE:
 			if (!strncmp(step->name, bp->ut_line, LMAX))
-				return(YES);
+				return YES;
 			break;
 		case USER_TYPE:
 			if (!strncmp(step->name, bp->ut_name, NMAX))
-				return(YES);
+				return YES;
 			break;
 		case INET_TYPE:
-			if (bp->ut_addr == inet_addr(step->name))
-			  return(YES);
+			if ((in_addr_t) bp->ut_addr == inet_addr(step->name))
+			  return YES;
 			break;
 	}
-	return(NO);
+	return NO;
 }
 
 /*
@@ -358,10 +381,7 @@ static void
 addarg(int type, char *arg) {
 	register ARG	*cur;
 
-	if (!(cur = (ARG *)malloc((unsigned int)sizeof(ARG)))) {
-		fputs(_("last: malloc failure.\n"), stderr);
-		exit(1);
-	}
+	cur = xmalloc(sizeof(ARG));
 	cur->next = arglist;
 	cur->type = type;
 	cur->name = arg;
@@ -376,10 +396,7 @@ TTY *
 addtty(char *ttyname) {
 	register TTY	*cur;
 
-	if (!(cur = (TTY *)malloc((unsigned int)sizeof(TTY)))) {
-		fputs(_("last: malloc failure.\n"), stderr);
-		exit(1);
-	}
+	cur = xmalloc(sizeof(TTY));
 	cur->next = ttylist;
 	cur->logout = currentout;
 	memcpy(cur->tty, ttyname, LMAX);
@@ -403,10 +420,9 @@ hostconv(char *arg) {
 		return;
 	if (first) {
 		first = 0;
-		if (gethostname(name, sizeof(name))) {
-			perror(_("last: gethostname"));
-			exit(1);
-		}
+		if (gethostname(name, sizeof(name)))
+			err(EXIT_FAILURE, _("gethostname failed"));
+
 		hostdot = strchr(name, '.');
 	}
 	if (hostdot && !strcmp(hostdot, argdot))
@@ -427,21 +443,19 @@ ttyconv(char *arg) {
 	 */
 	if (strlen(arg) == 2) {
 		/* either 6 for "ttyxx" or 8 for "console" */
-		if (!(mval = malloc((unsigned int)8))) {
-			fputs(_("last: malloc failure.\n"), stderr);
-			exit(1);
-		}
+		mval = xmalloc(8);
 		if (!strcmp(arg, "co"))
 			(void)strcpy(mval, "console");
 		else {
 			(void)strcpy(mval, "tty");
 			(void)strcpy(mval + 3, arg);
 		}
-		return(mval);
+		return mval;
 	}
 	if (!strncmp(arg, "/dev/", sizeof("/dev/") - 1))
-		return(arg + 5);
-	return(arg);
+		return arg + 5;
+
+	return arg;
 }
 
 /*
@@ -452,9 +466,9 @@ static void
 onintr(int signo) {
 	char	*ct;
 
-	ct = ctime(&utmpbuf.ut_time);
+	ct = utmp_ctime(&utmpbuf);
 	printf(_("\ninterrupted %10.10s %5.5s \n"), ct, ct + 11);
 	if (signo == SIGINT)
-		exit(1);
-	(void)fflush(stdout);			/* fix required for rsh */
+		_exit(EXIT_FAILURE);
+	fflush(stdout);			/* fix required for rsh */
 }

@@ -1,7 +1,7 @@
 #
 # Copyright (C) 2007 Karel Zak <kzak@redhat.com>
 #
-# This file is part of util-linux-ng.
+# This file is part of util-linux.
 #
 # This file is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -75,10 +75,32 @@ function ts_has_option {
 	echo -n $ALL | sed 's/ //g' | awk 'BEGIN { FS="="; RS="--" } /('$NAME'$|'$NAME'=)/ { print "yes" }'
 }
 
+function ts_init_core_env {
+	TS_NS="$TS_COMPONENT/$TS_TESTNAME"
+	TS_OUTPUT="$TS_OUTDIR/$TS_TESTNAME"
+	TS_DIFF="$TS_DIFFDIR/$TS_TESTNAME"
+	TS_EXPECTED="$TS_TOPDIR/expected/$TS_NS"
+	TS_MOUNTPOINT="$TS_OUTDIR/${TS_TESTNAME}-mnt"
+}
+
+function ts_init_core_subtest_env {
+	TS_NS="$TS_COMPONENT/$TS_TESTNAME-$TS_SUBNAME"
+	TS_OUTPUT="$TS_OUTDIR/$TS_TESTNAME-$TS_SUBNAME"
+	> $TS_OUTPUT
+	TS_DIFF="$TS_DIFFDIR/$TS_TESTNAME-$TS_SUBNAME"
+	TS_EXPECTED="$TS_TOPDIR/expected/$TS_NS"
+	TS_MOUNTPOINT="$TS_OUTDIR/${TS_TESTNAME}-${TS_SUBNAME}-mnt"
+}
+
 function ts_init_env {
 	local mydir=$(ts_abspath $(dirname $0))
 
-	export LANG="en_US.UTF-8"
+	LANG="POSIX"
+	LANGUAGE="POSIX"
+	LC_ALL="POSIX"
+	CHARSET="UTF-8"
+
+	export LANG LANGUAGE LC_ALL CHARSET
 
 	TS_TOPDIR=$(ts_abspath $mydir/../../)
 	TS_SCRIPT="$mydir/$(basename $0)"
@@ -89,18 +111,14 @@ function ts_init_env {
 	TS_NSUBTESTS=0
 	TS_NSUBFAILED=0
 
-	TS_NS="$TS_COMPONENT/$TS_TESTNAME"
 	TS_SELF="$TS_SUBDIR"
 
 	TS_OUTDIR="$TS_TOPDIR/output/$TS_COMPONENT"
-	TS_OUTPUT="$TS_OUTDIR/$TS_TESTNAME"
 	TS_DIFFDIR="$TS_TOPDIR/diff/$TS_COMPONENT"
-	TS_DIFF="$TS_DIFFDIR/$TS_TESTNAME"
-	TS_EXPECTED="$TS_TOPDIR/expected/$TS_NS"
-	TS_MOUNTPOINT="$TS_OUTDIR/${TS_TESTNAME}-mnt"
+
+	ts_init_core_env
 
 	TS_VERBOSE=$(ts_has_option "verbose" "$*")
-	TS_HAS_VOLUMEID="no"
 
 	BLKID_FILE="$TS_OUTDIR/${TS_TESTNAME}.blkidtab"
 
@@ -114,11 +132,6 @@ function ts_init_env {
 	. $TS_TOPDIR/commands.sh
 
 	export BLKID_FILE
-
-	if [ -x $TS_CMD_MOUNT ]; then
-		ldd $TS_CMD_MOUNT | grep -q 'libvolume_id' &> /dev/null
-		[ "$?" == "0" ] && TS_HAS_VOLUMEID="yes"
-	fi
 
 	rm -f $TS_OUTPUT
 	touch $TS_OUTPUT
@@ -145,10 +158,7 @@ function ts_init_subtest {
 
 	TS_SUBNAME="$1"
 
-	TS_OUTPUT="$TS_OUTDIR/$TS_TESTNAME-$TS_SUBNAME"
-	TS_DIFF="$TS_DIFFDIR/$TS_TESTNAME-$TS_SUBNAME"
-	TS_EXPECTED="$TS_TOPDIR/expected/$TS_NS-$TS_SUBNAME"
-	TS_MOUNTPOINT="$TS_OUTDIR/${TS_TESTNAME-$TS_SUBNAME}-mnt"
+	ts_init_core_subtest_env
 
 	[ $TS_NSUBTESTS -eq 0 ] && echo
 	TS_NSUBTESTS=$(( $TS_NSUBTESTS + 1 ))
@@ -182,7 +192,7 @@ function ts_init_suid {
 function ts_gen_diff {
 	local res=0
 
-	if [ -s $TS_OUTPUT ]; then
+	if [ -s "$TS_OUTPUT" ]; then
 		diff -u $TS_EXPECTED $TS_OUTPUT > $TS_DIFF
 		[ -s $TS_DIFF ] && res=1
 	else
@@ -194,7 +204,7 @@ function ts_gen_diff {
 function ts_finalize_subtest {
 	local res=0
 
-	if [ -s $TS_EXPECTED ]; then
+	if [ -s "$TS_EXPECTED" ]; then
 		ts_gen_diff
 		if [ $? -eq 1 ]; then
 			ts_failed_subtest "$1"
@@ -207,6 +217,10 @@ function ts_finalize_subtest {
 	fi
 
 	[ $res -ne 0 ] && TS_NSUBFAILED=$(( $TS_NSUBFAILED + 1 ))
+
+	# reset environment back to parental test
+	ts_init_core_env
+
 	return $res
 }
 
@@ -261,8 +275,8 @@ function ts_image_init {
 }
 
 function ts_device_init {
-	local img=$(ts_image_init)
-	local dev=$($TS_CMD_LOSETUP -s -f "$img")
+	local img=$(ts_image_init $1 $2)
+	local dev=$($TS_CMD_LOSETUP --show -f "$img")
 
 	if [ -z "$dev" ]; then
 		ts_device_deinit $dev
@@ -282,44 +296,16 @@ function ts_device_deinit {
 	fi
 }
 
-function ts_udev_dev_support {
-	if [ "$TS_HAS_VOLUMEID" == "yes" ] && [ ! -L "/dev/disk/$1/$2" ]; then
-		return 1
-	fi
-	return 0
-}
-
 function ts_uuid_by_devname {
-	local DEV="$1"
-	local UUID=""
-	if [ -x "$TS_ECMD_BLKID" ]; then
-		UUID=$($TS_ECMD_BLKID -c /dev/null -w /dev/null -s "UUID" $DEV | sed 's/.*UUID="//g; s/"//g')
-	elif [ -x "$TS_ECMD_VOLID" ]; then
-		UUID=$($TS_ECMD_VOLID -u $DEV)
-	fi
-	echo $UUID
+	echo $($TS_CMD_BLKID -p -s UUID -o value $1)
 }
 
 function ts_label_by_devname {
-	local DEV="$1"
-	local TYPE=""
-	if [ -x "$TS_ECMD_BLKID" ]; then
-		LABEL=$($TS_ECMD_BLKID -c /dev/null -w /dev/null -s "LABEL" $DEV | sed 's/.*LABEL="//g; s/"//g')
-	elif [ -x "$TS_ECMD_VOLID" ]; then
-		LABEL=$($TS_ECMD_VOLID -l $DEV)
-	fi
-	echo $LABEL
+	echo $($TS_CMD_BLKID -p -s LABEL -o value $1)
 }
 
 function ts_fstype_by_devname {
-	local DEV="$1"
-	local TYPE=""
-	if [ -x "$TS_ECMD_BLKID" ]; then
-		TYPE=$($TS_ECMD_BLKID -c /dev/null -w /dev/null -s "TYPE" $DEV | sed 's/.*TYPE="//g; s/"//g')
-	elif [ -x "$TS_ECMD_VOLID" ]; then
-		TYPE=$($TS_ECMD_VOLID -t $DEV)
-	fi
-	echo $TYPE
+	echo $($TS_CMD_BLKID -p -s TYPE -o value $1)
 }
 
 function ts_device_has {
@@ -365,14 +351,15 @@ function ts_swapoff {
 		ln -sf $TS_CMD_SWAPON $TS_CMD_SWAPOFF
 		REMSWAPOFF="true"
 	fi
-	$TS_CMD_SWAPOFF $DEV 2>&1 >> $TS_OUTPUT
+	LD_LIBRARY_PATH="$U_L_LIBRARY_PATH" \
+			$TS_CMD_SWAPOFF $DEV 2>&1 >> $TS_OUTPUT
 	if [ -n "$REMSWAPOFF" ]; then
 		rm -f $TS_CMD_SWAPOFF
 	fi
 }
 
 function ts_fstab_open {
-	echo "# <!-- util-linux-ng test entry" >> /etc/fstab
+	echo "# <!-- util-linux test entry" >> /etc/fstab
 }
 
 function ts_fstab_close {
@@ -396,13 +383,13 @@ function ts_fstab_add {
 
 function ts_fstab_clean {
 	sed --in-place "
-/# <!-- util-linux-ng/!b
+/# <!-- util-linux/!b
 :a
 /# -->/!{
   N
   ba
 }
-s/# <!-- util-linux-ng.*-->//;
+s/# <!-- util-linux.*-->//;
 /^$/d" /etc/fstab
 }
 

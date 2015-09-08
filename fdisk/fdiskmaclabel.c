@@ -42,9 +42,8 @@ void
 mac_nolabel( void )
 {
     maclabel->magic = 0;
-    mac_label = 0;
     partitions = 4;
-    memset( MBRbuffer, 0, sizeof(MBRbuffer) );	/* avoid fdisk cores */
+    zeroize_mbr_buffer();
     return;
 }
 
@@ -65,7 +64,6 @@ check_mac_label( void )
 			goto IS_MAC;
 			break;
 		default:
-			mac_label = 0;
 			other_endian = 0;
 			return 0;
 
@@ -75,12 +73,11 @@ check_mac_label( void )
 IS_MAC:
     other_endian = (maclabel->magic == MAC_LABEL_MAGIC_SWAPPED); // =?
     update_units();
-    mac_label = 1;
+    disklabel = MAC_LABEL;
     partitions= 1016; // =?
     volumes = 15;	// =?
     mac_info();
     mac_nolabel();		/* %% */
-    mac_label = 1;		/* %% */
     return 1;
 }
 

@@ -22,11 +22,6 @@
 #include "blkdev.h"
 
 #include <endian.h>
-#ifdef HAVE_SCSI_SCSI_H
-#define u_char	unsigned char
-#include <scsi/scsi.h>		/* SCSI_IOCTL_GET_IDLUN */
-#undef u_char
-#endif
 #ifdef HAVE_LINUX_MAJOR_H
 #include <linux/major.h>	/* FLOPPY_MAJOR */
 #endif
@@ -115,7 +110,6 @@ static void set_sun_partition(int i, uint32_t start, uint32_t stop, uint16_t sys
 
 void sun_nolabel(void)
 {
-	sun_label = 0;
 	sunlabel->magic = 0;
 	partitions = 4;
 }
@@ -127,7 +121,6 @@ int check_sun_label(void)
 
 	if (sunlabel->magic != SUN_LABEL_MAGIC &&
 	    sunlabel->magic != SUN_LABEL_MAGIC_SWAPPED) {
-		sun_label = 0;
 		other_endian = 0;
 		return 0;
 	}
@@ -151,17 +144,17 @@ int check_sun_label(void)
 
 		if (sunlabel->version != SSWAP32(SUN_LABEL_VERSION)) {
 			fprintf(stderr,_("Detected sun disklabel with wrong version [0x%08x].\n"),
-				sunlabel->version);
+				SSWAP32(sunlabel->version));
 			need_fixing = 1;
 		}
 		if (sunlabel->sanity != SSWAP32(SUN_LABEL_SANE)) {
 			fprintf(stderr,_("Detected sun disklabel with wrong sanity [0x%08x].\n"),
-				sunlabel->sanity);
+				SSWAP32(sunlabel->sanity));
 			need_fixing = 1;
 		}
 		if (sunlabel->num_partitions != SSWAP16(SUN_NUM_PARTITIONS)) {
 			fprintf(stderr,_("Detected sun disklabel with wrong num_partitions [%u].\n"),
-				sunlabel->num_partitions);
+				SSWAP16(sunlabel->num_partitions));
 			need_fixing = 1;
 		}
 		if (need_fixing) {
@@ -182,7 +175,7 @@ int check_sun_label(void)
 		}
 	}
 	update_units();
-	sun_label = 1;
+	disklabel = SUN_LABEL;
 	partitions = SUN_NUM_PARTITIONS;
 	return 1;
 }
@@ -191,8 +184,8 @@ void create_sunlabel(void)
 {
 	struct hd_geometry geometry;
 	unsigned long long llsectors, llcyls;
-	unsigned int ndiv;
-	int res, sec_fac;
+	unsigned int ndiv, sec_fac;
+	int res;
 
 	fprintf(stderr,
 	_("Building a new sun disklabel. Changes will remain in memory only,\n"
@@ -203,7 +196,7 @@ void create_sunlabel(void)
 #else
 	other_endian = 0;
 #endif
-	memset(MBRbuffer, 0, sizeof(MBRbuffer));
+	zeroize_mbr_buffer();
 	sunlabel->magic = SSWAP16(SUN_LABEL_MAGIC);
 	sunlabel->sanity = SSWAP32(SUN_LABEL_SANE);
 	sunlabel->version = SSWAP32(SUN_LABEL_VERSION);
@@ -338,7 +331,7 @@ static int verify_sun_cmp(int *a, int *b)
 void verify_sun(void)
 {
     uint32_t starts[SUN_NUM_PARTITIONS], lens[SUN_NUM_PARTITIONS], start, stop;
-    int i,j,k,starto,endo;
+    uint32_t i,j,k,starto,endo;
     int array[SUN_NUM_PARTITIONS];
 
     verify_sun_starts = starts;
@@ -382,7 +375,7 @@ void verify_sun(void)
         else
             array[i] = -1;
     }
-    qsort(array,SIZE(array),sizeof(array[0]),
+    qsort(array,ARRAY_SIZE(array),sizeof(array[0]),
 	  (int (*)(const void *,const void *)) verify_sun_cmp);
     if (array[0] == -1) {
     	printf(_("No partitions defined\n"));
@@ -410,7 +403,8 @@ void add_sun_partition(int n, int sys)
 	int whole_disk = 0;
 		
 	char mesg[256];
-	int i, first, last;
+	int i;
+	unsigned int first, last;
 
 	if (part->num_sectors && tag->tag != SSWAP16(SUN_TAG_UNASSIGNED)) {
 		printf(_("Partition %d is already defined.  Delete "
@@ -578,8 +572,8 @@ void sun_list_table(int xtra)
 	w = strlen(disk_device);
 	if (xtra)
 		printf(
-		_("\nDisk %s (Sun disk label): %d heads, %llu sectors, %d rpm\n"
-		"%d cylinders, %d alternate cylinders, %d physical cylinders\n"
+		_("\nDisk %s (Sun disk label): %u heads, %llu sectors, %d rpm\n"
+		"%u cylinders, %d alternate cylinders, %d physical cylinders\n"
 		"%d extra sects/cyl, interleave %d:1\n"
 		"Label ID: %s\n"
 		"Volume ID: %s\n"
@@ -594,7 +588,7 @@ void sun_list_table(int xtra)
 		       str_units(PLURAL), units_per_sector);
 	else
 		printf(
-	_("\nDisk %s (Sun disk label): %d heads, %llu sectors, %d cylinders\n"
+	_("\nDisk %s (Sun disk label): %u heads, %llu sectors, %u cylinders\n"
 	"Units = %s of %d * 512 bytes\n\n"),
 		       disk_device, heads, sectors, cylinders,
 		       str_units(PLURAL), units_per_sector);
@@ -609,13 +603,13 @@ void sun_list_table(int xtra)
 			uint32_t start = SSWAP32(part->start_cylinder) * heads * sectors;
 			uint32_t len = SSWAP32(part->num_sectors);
 			printf(
-			    "%s %c%c %9ld %9ld %9ld%c  %2x  %s\n",
+			    "%s %c%c %9lu %9lu %9lu%c  %2x  %s\n",
 /* device */		  partname(disk_device, i+1, w),
 /* flags */		  (tag->flag & SSWAP16(SUN_FLAG_UNMNT)) ? 'u' : ' ',
 			  (tag->flag & SSWAP16(SUN_FLAG_RONLY)) ? 'r' : ' ',
-/* start */		  (long) scround(start),
-/* end */		  (long) scround(start+len),
-/* odd flag on end */	  (long) len / 2, len & 1 ? '+' : ' ',
+/* start */		  (unsigned long) scround(start),
+/* end */		  (unsigned long) scround(start+len),
+/* odd flag on end */	  (unsigned long) len / 2, len & 1 ? '+' : ' ',
 /* type id */		  SSWAP16(tag->tag),
 /* type name */		  (type = partition_type(SSWAP16(tag->tag)))
 			        ? type : _("Unknown"));

@@ -2,6 +2,8 @@
    fdisk.h
 */
 
+#include "c.h"
+
 #define DEFAULT_SECTOR_SIZE	512
 #define MAX_SECTOR_SIZE	2048
 #define SECTOR_SIZE	512	/* still used in BSD code */
@@ -20,8 +22,6 @@
 
 #define IS_EXTENDED(i) \
 	((i) == EXTENDED || (i) == WIN98_EXTENDED || (i) == LINUX_EXTENDED)
-
-#define SIZE(a)	(sizeof(a)/sizeof((a)[0]))
 
 #define cround(n)	(display_in_cyl_units ? ((n)/units_per_sector)+1 : (n))
 #define scround(x)	(((x)+units_per_sector-1)/units_per_sector)
@@ -45,9 +45,9 @@ struct partition {
 	unsigned char size4[4];         /* nr of sectors in partition */
 } PACKED;
 
-enum failure {usage, usage2, ioctl_error,
+enum failure {ioctl_error,
 	unable_to_open, unable_to_read, unable_to_seek,
-	unable_to_write, out_of_memory};
+	unable_to_write};
 
 enum action {fdisk, require, try_only, create_empty_dos, create_empty_sun};
 
@@ -67,7 +67,7 @@ extern void get_geometry(int fd, struct geom *);
 extern int get_boot(enum action what);
 extern int  get_partition(int warn, int max);
 extern void list_types(struct systypes *sys);
-extern int read_line (void);
+extern int read_line (int *asked);
 extern char read_char(char *mesg);
 extern int read_hex(struct systypes *sys);
 extern void reread_partition_table(int leave);
@@ -76,7 +76,9 @@ extern int valid_part_table_flag(unsigned char *b);
 extern unsigned int read_int(unsigned int low, unsigned int dflt,
 			     unsigned int high, unsigned int base, char *mesg);
 
-extern unsigned char MBRbuffer[MAX_SECTOR_SIZE];
+extern unsigned char *MBRbuffer;
+extern void zeroize_mbr_buffer(void);
+
 extern unsigned int heads, cylinders, sector_size;
 extern unsigned long long sectors;
 extern char *partition_type(unsigned char type);
@@ -92,11 +94,16 @@ extern const char * str_units(int);
 extern unsigned long long get_start_sect(struct partition *p);
 extern unsigned long long get_nr_sects(struct partition *p);
 
-extern int osf_label;
-extern int sun_label;
-extern int sgi_label;
-extern int aix_label;
-extern int mac_label;
+enum labeltype {
+	DOS_LABEL,
+	SUN_LABEL,
+	SGI_LABEL,
+	AIX_LABEL,
+	OSF_LABEL,
+	MAC_LABEL
+};
+
+extern enum labeltype disklabel;
 
 /* prototypes for fdiskbsdlabel.c */
 extern void bselect(void);
@@ -107,4 +114,3 @@ extern void xbsd_print_disklabel(int);
 /* prototypes for fdisksgilabel.c */
 extern int valid_part_table_flag(unsigned char *b);
 
-#define PROC_PARTITIONS "/proc/partitions"

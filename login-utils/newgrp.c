@@ -14,17 +14,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+
+#ifdef HAVE_CRYPT_H
+#include <crypt.h>
+#endif
+
+#include "c.h"
 #include "pathnames.h"
-#include "my_crypt.h"
 #include "nls.h"
-
-#ifndef TRUE
-# define TRUE 1
-#endif
-
-#ifndef FALSE
-# define FALSE 0
-#endif
 
 /* try to read password from gshadow */
 static char *
@@ -60,7 +57,7 @@ get_gshadow_pwd(char *groupname)
 }
 
 static int
-allow_setgid(struct passwd *pe, struct group *ge) 
+allow_setgid(struct passwd *pe, struct group *ge)
 {
     char **look;
     int notfound = 1;
@@ -90,7 +87,7 @@ allow_setgid(struct passwd *pe, struct group *ge)
     return FALSE;			/* default to denial */
 }
 
-int 
+int
 main(int argc, char *argv[])
 {
     struct passwd *pw_entry;
@@ -100,48 +97,38 @@ main(int argc, char *argv[])
     setlocale(LC_ALL, "");
     bindtextdomain(PACKAGE, LOCALEDIR);
     textdomain(PACKAGE);
-    
-    if (!(pw_entry = getpwuid(getuid()))) {
-	perror(_("newgrp: Who are you?"));
-	exit(1);
-    }
-    
+
+    if (!(pw_entry = getpwuid(getuid())))
+	err(EXIT_FAILURE, _("who are you?"));
+
     shell = (pw_entry->pw_shell[0] ? pw_entry->pw_shell : _PATH_BSHELL);
-    
+
     if (argc < 2) {
-	if(setgid(pw_entry->pw_gid) < 0) {
-	    perror(_("newgrp: setgid"));
-	    exit(1);
-	}
+	if(setgid(pw_entry->pw_gid) < 0)
+	    err(EXIT_FAILURE, _("setgid failed"));
     } else {
 	errno = 0;
 	if (!(gr_entry = getgrnam(argv[1]))) {
 	    if (errno)
-		    perror(_("newgrp: No such group."));			/* error */
+		    err(EXIT_FAILURE, _("no such group"));
 	    else
-		    fprintf(stderr, "%s\n", _("newgrp: No such group."));	/* no group */
-	    exit(1);
+		    errx(EXIT_FAILURE, _("no such group"));	/* No group */
 	} else {
-	    if(allow_setgid(pw_entry, gr_entry)) {
-		if(setgid(gr_entry->gr_gid) < 0) {
-		    perror(_("newgrp: setgid"));
-		    exit(1);
-		}
-	    } else {
-		puts(_("newgrp: Permission denied"));
-		exit(1);
-	    }
+	    if (allow_setgid(pw_entry, gr_entry)) {
+		if (setgid(gr_entry->gr_gid) < 0)
+		    err(EXIT_FAILURE, _("setgid failed"));
+	    } else
+	        errx(EXIT_FAILURE, _("permission denied"));
 	}
     }
 
-    if(setuid(getuid()) < 0) {
-	perror(_("newgrp: setuid"));
-	exit(1);
-    }
+    if (setuid(getuid()) < 0)
+	err(EXIT_FAILURE, _("setuid failed"));
 
     fflush(stdout); fflush(stderr);
     execl(shell,shell,(char*)0);
-    perror(_("No shell"));
+    warn(_("exec %s failed"), shell);
     fflush(stderr);
-    exit(1);
+
+    return EXIT_FAILURE;
 }
