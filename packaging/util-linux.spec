@@ -1,7 +1,7 @@
 Name:           util-linux
 Version:        2.20.2
 Release:        4
-License:        GPLv2 and GPLv2+ and BSD with advertising and Public Domain
+License:        GPL-2.0+
 Summary:        A collection of basic system utilities
 Url:            http://www.kernel.org/pub/linux/utils/util-linux/
 Group:          System/Base
@@ -106,6 +106,15 @@ Requires:       libmount = %{version}
 %description -n libmount-devel
 Development files for libmount.
 
+%package -n agetty
+License:        BSD
+Summary:        Alternative Linux getty
+Group:          System/Daemons
+
+%description -n agetty
+agetty opens a tty port, prompts for a login name and invokes the
+/bin/login command. It is normally invoked by init(8).
+
 %prep
 %setup -q
 %patch0 -p1
@@ -114,7 +123,8 @@ Development files for libmount.
 cp %{SOURCE1001} .
 unset LINGUAS || :
 
-export CFLAGS="-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 %{optflags}"
+export CFLAGS="-fPIE -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 %{optflags}"
+export LDFLAGS="-pie"
 export SUID_CFLAGS="-fpie"
 export SUID_LDFLAGS="-pie"
 %configure \
@@ -219,9 +229,8 @@ cat COPYING > $RPM_BUILD_ROOT%{_datadir}/license/libmount
 /bin/dmesg
 /bin/findmnt
 /bin/lsblk
-%exclude %attr(4755,root,root)   /bin/mount
-%exclude %attr(4755,root,root)   /bin/umount
-/sbin/agetty
+/bin/mount
+/bin/umount
 /sbin/blkid
 /sbin/blockdev
 %exclude /sbin/ctrlaltdel
@@ -333,4 +342,9 @@ cat COPYING > $RPM_BUILD_ROOT%{_datadir}/license/libmount
 %{_includedir}/libmount/libmount.h
 %{_libdir}/libmount.so
 %{_libdir}/pkgconfig/mount.pc
+%manifest util-linux.manifest
+
+%files -n agetty
+%defattr(-,root,root)
+/sbin/agetty
 %manifest util-linux.manifest
